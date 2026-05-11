@@ -1,0 +1,26 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: property
+      POSTGRES_PASSWORD: property
+      POSTGRES_DB: property_ledger
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+  app:
+    build: .
+    depends_on:
+      - db
+    environment:
+      DATABASE_URL: postgresql://property:property@db:5432/property_ledger?schema=public
+      AUTH_SECRET: replace-with-a-long-random-secret
+      UPLOAD_DIR: /app/uploads
+    ports:
+      - "3000:3000"
+    volumes:
+      - uploads:/app/uploads
+volumes:
+  postgres_data:
+  uploads:

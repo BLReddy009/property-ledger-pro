@@ -1,0 +1,31 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+}
+
+.dark {
+  color-scheme: dark;
+}
+
+body {
+  @apply bg-mist text-ink antialiased dark:bg-[#101416] dark:text-slate-100;
+}
+
+input,
+select,
+textarea {
+  @apply rounded-md border border-slate-200 bg-white px-3 py-2 text-sm outline-none transition focus:border-pine focus:ring-2 focus:ring-pine/15 dark:border-slate-700 dark:bg-slate-900;
+}
+
+button {
+  @apply transition;
+}
+
+@media print {
+  .no-print {
+    display: none !important;
+  }
+}

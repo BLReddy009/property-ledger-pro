@@ -1,0 +1,328 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  OWNER_ADMIN
+  ACCOUNTANT_MANAGER
+  READ_ONLY_VIEWER
+}
+
+enum OccupancyStatus {
+  OCCUPIED
+  VACANT
+  NOTICE
+  MAINTENANCE
+}
+
+enum PaymentMethod {
+  CASH
+  UPI
+  BANK_TRANSFER
+  CHEQUE
+}
+
+enum RentStatus {
+  PAID
+  PARTIALLY_PAID
+  PENDING
+  OVERDUE
+}
+
+enum AccountType {
+  PERSONAL
+  BUILDING
+  CASH
+  CUSTOM
+}
+
+enum ExpenseScope {
+  FLAT
+  BUILDING
+}
+
+enum DocumentCategory {
+  BILL
+  INVOICE
+  WARRANTY_CARD
+  AMC_CONTRACT
+  TENANT_AGREEMENT
+  REPAIR_PHOTO
+  RECEIPT
+  OTHER
+}
+
+model User {
+  id           String     @id @default(cuid())
+  name         String
+  email        String     @unique
+  passwordHash String
+  role         Role       @default(OWNER_ADMIN)
+  locale       String     @default("en")
+  currency     String     @default("INR")
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  auditLogs    AuditLog[]
+}
+
+model Property {
+  id                  String            @id @default(cuid())
+  name                String
+  address             String
+  floors              Int
+  hasGenerator        Boolean           @default(false)
+  hasWaterTanker      Boolean           @default(false)
+  hasLift             Boolean           @default(false)
+  hasSecurityStaff    Boolean           @default(false)
+  hasMaintenanceStaff Boolean           @default(false)
+  notes               String?
+  createdAt           DateTime          @default(now())
+  updatedAt           DateTime          @updatedAt
+  flats               Flat[]
+  accounts            Account[]
+  buildingExpenses    BuildingExpense[]
+  tankerLogs          WaterTankerLog[]
+  assets              Asset[]
+  documents           Document[]
+  notifications       Notification[]
+
+  @@index([name])
+}
+
+model Flat {
+  id              String          @id @default(cuid())
+  propertyId      String
+  property        Property        @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  flatNumber      String
+  tenantName      String?
+  tenantPhone     String?
+  tenantEmail     String?
+  monthlyRent     Decimal         @db.Decimal(12, 2)
+  securityDeposit Decimal         @db.Decimal(12, 2)
+  leaseStart      DateTime?
+  leaseEnd        DateTime?
+  status          OccupancyStatus @default(OCCUPIED)
+  notes           String?
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  rentPayments    RentPayment[]
+  expenses        ExpenseRecord[]
+  assets          Asset[]
+  documents       Document[]
+
+  @@unique([propertyId, flatNumber])
+  @@index([tenantName])
+  @@index([status])
+}
+
+model Account {
+  id          String          @id @default(cuid())
+  propertyId  String?
+  property    Property?       @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  name        String
+  type        AccountType
+  openingCash Decimal         @default(0) @db.Decimal(12, 2)
+  isActive    Boolean         @default(true)
+  createdAt   DateTime        @default(now())
+  payments    RentPayment[]
+  expenses    ExpenseRecord[]
+  building    BuildingExpense[]
+  tankers     WaterTankerLog[]
+}
+
+model RentPayment {
+  id             String        @id @default(cuid())
+  flatId         String
+  flat           Flat          @relation(fields: [flatId], references: [id], onDelete: Cascade)
+  accountId      String?
+  account        Account?      @relation(fields: [accountId], references: [id])
+  month          Int
+  year           Int
+  expectedAmount Decimal       @db.Decimal(12, 2)
+  receivedAmount Decimal       @db.Decimal(12, 2)
+  lateFee        Decimal       @default(0) @db.Decimal(12, 2)
+  discount       Decimal       @default(0) @db.Decimal(12, 2)
+  method         PaymentMethod
+  transactionRef String?
+  receivedDate   DateTime
+  status         RentStatus
+  notes          String?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  documents      Document[]
+
+  @@index([year, month])
+  @@index([status])
+}
+
+model ExpenseRecord {
+  id             String        @id @default(cuid())
+  flatId         String
+  flat           Flat          @relation(fields: [flatId], references: [id], onDelete: Cascade)
+  accountId      String?
+  account        Account?      @relation(fields: [accountId], references: [id])
+  category       String
+  title          String
+  description    String?
+  vendor         String?
+  amount         Decimal       @db.Decimal(12, 2)
+  paymentDate    DateTime
+  method         PaymentMethod
+  warranty       Boolean       @default(false)
+  warrantyExpiry DateTime?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  documents      Document[]
+
+  @@index([category])
+  @@index([paymentDate])
+}
+
+model BuildingExpense {
+  id           String        @id @default(cuid())
+  propertyId   String
+  property     Property      @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  accountId    String?
+  account      Account?      @relation(fields: [accountId], references: [id])
+  type         String
+  title        String
+  employeeName String?
+  role         String?
+  salaryAmount Decimal?      @db.Decimal(12, 2)
+  advancePaid  Decimal?      @db.Decimal(12, 2)
+  bonus        Decimal?      @db.Decimal(12, 2)
+  amount       Decimal       @db.Decimal(12, 2)
+  billMonth    String?
+  dueDate      DateTime?
+  paidDate     DateTime?
+  method       PaymentMethod
+  vendor       String?
+  runningHours Decimal?      @db.Decimal(10, 2)
+  renewalDate  DateTime?
+  paid         Boolean       @default(true)
+  notes        String?
+  createdAt    DateTime      @default(now())
+  documents    Document[]
+
+  @@index([type])
+  @@index([dueDate])
+}
+
+model WaterTankerLog {
+  id              String        @id @default(cuid())
+  propertyId      String
+  property        Property      @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  accountId       String?
+  account         Account?      @relation(fields: [accountId], references: [id])
+  vendorName      String
+  date            DateTime
+  tankers         Int
+  litersSupplied  Int
+  costPerTanker   Decimal       @db.Decimal(12, 2)
+  totalCost       Decimal       @db.Decimal(12, 2)
+  method          PaymentMethod
+  paid            Boolean       @default(false)
+  createdAt       DateTime      @default(now())
+  documents       Document[]
+
+  @@index([date])
+}
+
+model Asset {
+  id              String     @id @default(cuid())
+  propertyId      String?
+  property        Property?  @relation(fields: [propertyId], references: [id])
+  flatId          String?
+  flat            Flat?      @relation(fields: [flatId], references: [id])
+  productName     String
+  category        String
+  brand           String?
+  modelNumber     String?
+  serialNumber    String?
+  purchaseDate    DateTime
+  purchaseAmount  Decimal    @db.Decimal(12, 2)
+  vendorStore     String?
+  warrantyStart   DateTime?
+  warrantyExpiry  DateTime?
+  amcDetails      String?
+  location        String?
+  depreciationPct Decimal?   @db.Decimal(5, 2)
+  notes           String?
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+  services        ServiceHistory[]
+  documents       Document[]
+
+  @@index([productName])
+  @@index([warrantyExpiry])
+}
+
+model ServiceHistory {
+  id          String   @id @default(cuid())
+  assetId     String
+  asset       Asset    @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  title       String
+  vendor      String?
+  amount      Decimal? @db.Decimal(12, 2)
+  servicedAt  DateTime
+  notes       String?
+}
+
+model Document {
+  id                 String            @id @default(cuid())
+  propertyId         String?
+  property           Property?         @relation(fields: [propertyId], references: [id])
+  flatId             String?
+  flat               Flat?             @relation(fields: [flatId], references: [id])
+  rentPaymentId      String?
+  rentPayment        RentPayment?      @relation(fields: [rentPaymentId], references: [id])
+  expenseRecordId    String?
+  expenseRecord      ExpenseRecord?    @relation(fields: [expenseRecordId], references: [id])
+  buildingExpenseId  String?
+  buildingExpense    BuildingExpense?  @relation(fields: [buildingExpenseId], references: [id])
+  waterTankerLogId   String?
+  waterTankerLog     WaterTankerLog?   @relation(fields: [waterTankerLogId], references: [id])
+  assetId            String?
+  asset              Asset?            @relation(fields: [assetId], references: [id])
+  name               String
+  category           DocumentCategory
+  mimeType           String
+  size               Int
+  path               String
+  createdAt          DateTime          @default(now())
+
+  @@index([category])
+}
+
+model Notification {
+  id         String    @id @default(cuid())
+  propertyId String?
+  property   Property? @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  title      String
+  message    String
+  type       String
+  dueDate    DateTime?
+  read       Boolean   @default(false)
+  createdAt  DateTime  @default(now())
+
+  @@index([read])
+  @@index([dueDate])
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id])
+  action    String
+  entity    String
+  entityId  String?
+  before    Json?
+  after     Json?
+  createdAt DateTime @default(now())
+
+  @@index([entity, entityId])
+}

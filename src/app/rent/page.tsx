@@ -1,0 +1,28 @@
+import { AppShell } from "@/components/app-shell";
+import { PageTitle } from "@/components/page-title";
+import { RentCollectionClient } from "@/components/rent-collection-client";
+import { prisma } from "@/lib/prisma";
+
+export const dynamic = "force-dynamic";
+
+export default async function RentPage() {
+  const payments = await prisma.rentPayment.findMany({
+    include: { flat: { include: { property: true } }, account: true },
+    orderBy: { receivedDate: "desc" }
+  }).catch(() => []);
+  const flats = await prisma.flat.findMany({
+    include: { property: true },
+    orderBy: [{ property: { name: "asc" } }, { flatNumber: "asc" }]
+  }).catch(() => []);
+  const accounts = await prisma.account.findMany({ where: { isActive: true }, orderBy: { name: "asc" } }).catch(() => []);
+
+  return (
+    <AppShell>
+      <PageTitle
+        title="Rent Collection"
+        description="Use quick buttons to mark rent as collected or pending, and keep a simple remark for each flat."
+      />
+      <RentCollectionClient initialPayments={payments} flats={flats} accounts={accounts} />
+    </AppShell>
+  );
+}
