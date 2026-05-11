@@ -7,39 +7,60 @@ import { loginSchema } from "@/lib/validations";
 export async function POST(request: Request) {
   try {
     const input = loginSchema.parse(await request.json());
-    let user = await prisma.user.findUnique({ where: { email: input.email } });
-
-    const demoLogin = demoUsers.find((demo) => demo.email === input.email && demo.password === input.password);
+    const email = input.email;
+    const password = input.password.trim();
+    const demoLogin = demoUsers.find((demo) => demo.email === email && demo.password === password);
+    let user = null;
 
     if (demoLogin) {
-      const passwordMatches = user ? await verifyPassword(input.password, user.passwordHash) : false;
-      const demoPasswordHash = passwordMatches && user ? user.passwordHash : await hashPassword(input.password);
+      try {
+        const existingUser = await prisma.user.findUnique({ where: { email } });
+        const passwordMatches = existingUser ? await verifyPassword(password, existingUser.passwordHash) : false;
+        const demoPasswordHash = passwordMatches && existingUser ? existingUser.passwordHash : await hashPassword(password);
 
-      user = await prisma.user.upsert({
-        where: { email: input.email },
-        create: {
+        user = await prisma.user.upsert({
+          where: { email },
+          create: {
+            name: demoLogin.name,
+            email,
+            passwordHash: demoPasswordHash,
+            role: demoLogin.role
+          },
+          update: passwordMatches
+            ? { name: demoLogin.name, role: demoLogin.role }
+            : {
+                name: demoLogin.name,
+                passwordHash: demoPasswordHash,
+                role: demoLogin.role
+              }
+        });
+      } catch (error) {
+        console.error("Demo login database fallback", error);
+        user = {
+          id: `demo-${demoLogin.role.toLowerCase()}`,
           name: demoLogin.name,
-          email: input.email,
-          passwordHash: demoPasswordHash,
-          role: demoLogin.role
-        },
-        update: passwordMatches
-          ? { role: demoLogin.role }
-          : {
-              passwordHash: demoPasswordHash,
-              role: demoLogin.role
-            }
-      });
+          email: demoLogin.email,
+          role: demoLogin.role,
+          passwordHash: ""
+        };
+      }
+    } else {
+      user = await prisma.user.findUnique({ where: { email } });
     }
 
-    if (!user || !(await verifyPassword(input.password, user.passwordHash))) {
+    if (!user || (!demoLogin && !(await verifyPassword(password, user.passwordHash)))) {
       return NextResponse.json({ message: "Invalid email or password" }, { status: 401 });
     }
 
     await createSession({ id: user.id, name: user.name, email: user.email, role: user.role });
-    await prisma.auditLog.create({
-      data: { userId: user.id, action: "LOGIN", entity: "User", entityId: user.id }
-    });
+
+    if (!user.id.startsWith("demo-")) {
+      prisma.auditLog
+        .create({
+          data: { userId: user.id, action: "LOGIN", entity: "User", entityId: user.id }
+        })
+        .catch((error) => console.error("Login audit log failed", error));
+    }
 
     return NextResponse.json({ id: user.id, name: user.name, email: user.email, role: user.role });
   } catch (error) {

@@ -68,8 +68,10 @@ export async function requireUser(roles?: Role[]) {
 export async function getFreshSessionUser() {
   const session = await getSession();
   if (!session) return null;
-  return prisma.user.findUnique({
-    where: { id: session.id },
-    select: { id: true, name: true, email: true, role: true, currency: true, locale: true }
-  });
+  return prisma.user
+    .findUnique({
+      where: { id: session.id },
+      select: { id: true, name: true, email: true, role: true, currency: true, locale: true }
+    })
+    .catch(() => ({ ...session, currency: "INR", locale: "en" }));
 }

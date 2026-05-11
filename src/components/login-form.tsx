@@ -27,7 +27,8 @@ export function LoginForm() {
       })
     });
     if (!response.ok) {
-      setError("Could not sign in with those details.");
+      const result = await response.json().catch(() => null);
+      setError(result?.message || "Could not sign in with those details.");
       return;
     }
     router.push("/");

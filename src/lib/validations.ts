@@ -2,13 +2,13 @@ import { z } from "zod";
 
 export const signupSchema = z.object({
   name: z.string().min(2),
-  email: z.string().email(),
+  email: z.string().trim().toLowerCase().email(),
   password: z.string().min(8),
   role: z.enum(["OWNER_ADMIN", "ACCOUNTANT_MANAGER", "READ_ONLY_VIEWER"]).default("OWNER_ADMIN")
 });
 
 export const loginSchema = z.object({
-  email: z.string().email(),
+  email: z.string().trim().toLowerCase().email(),
   password: z.string().min(1)
 });
 
