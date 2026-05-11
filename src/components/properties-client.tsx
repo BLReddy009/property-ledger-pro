@@ -15,7 +15,7 @@ type PropertyCard = {
   flats: Array<{ id: string }>;
 };
 
-export function PropertiesClient({ initialProperties }: { initialProperties: PropertyCard[] }) {
+export function PropertiesClient({ initialProperties, canManage }: { initialProperties: PropertyCard[]; canManage: boolean }) {
   const [properties, setProperties] = useState(initialProperties);
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -56,9 +56,15 @@ export function PropertiesClient({ initialProperties }: { initialProperties: Pro
   return (
     <>
       <div className="mb-6 flex justify-end">
-        <button onClick={() => setOpen(true)} className="inline-flex items-center gap-2 rounded-md bg-pine px-4 py-2 text-sm font-semibold text-white">
-          <Plus size={16} /> New property
-        </button>
+        {canManage ? (
+          <button onClick={() => setOpen(true)} className="inline-flex items-center gap-2 rounded-md bg-pine px-4 py-2 text-sm font-semibold text-white">
+            <Plus size={16} /> New property
+          </button>
+        ) : (
+          <span className="rounded-md border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-500 dark:border-slate-700 dark:bg-slate-900">
+            Read-only access
+          </span>
+        )}
       </div>
       {error && (
         <div className="mb-4 rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700 dark:border-red-900/60 dark:bg-red-950/40 dark:text-red-300">
@@ -92,14 +98,16 @@ export function PropertiesClient({ initialProperties }: { initialProperties: Pro
           <div className="rounded-md border border-dashed border-slate-300 bg-white p-8 text-center dark:border-slate-700 dark:bg-[#151b1e] md:col-span-2 xl:col-span-3">
             <h2 className="text-lg font-semibold">Create your first property</h2>
             <p className="mt-2 text-sm text-slate-500">Add a building, enable facilities, then start adding flats, rent collections, expenses, and documents.</p>
-            <button onClick={() => setOpen(true)} className="mt-4 inline-flex items-center gap-2 rounded-md bg-pine px-4 py-2 text-sm font-semibold text-white">
-              <Plus size={16} /> New property
-            </button>
+            {canManage && (
+              <button onClick={() => setOpen(true)} className="mt-4 inline-flex items-center gap-2 rounded-md bg-pine px-4 py-2 text-sm font-semibold text-white">
+                <Plus size={16} /> New property
+              </button>
+            )}
           </div>
         )}
       </div>
 
-      {open && (
+      {open && canManage && (
         <div className="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4">
           <form onSubmit={createProperty} className="w-full max-w-2xl rounded-md bg-white p-5 shadow-soft dark:bg-[#151b1e]">
             <div className="mb-4 flex items-center justify-between">

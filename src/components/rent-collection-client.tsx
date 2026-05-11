@@ -35,11 +35,13 @@ type RentPaymentRow = {
 export function RentCollectionClient({
   initialPayments,
   flats,
-  accounts
+  accounts,
+  canManage
 }: {
   initialPayments: RentPaymentRow[];
   flats: FlatOption[];
   accounts: AccountOption[];
+  canManage: boolean;
 }) {
   const [payments, setPayments] = useState(initialPayments);
   const [open, setOpen] = useState(false);
@@ -54,6 +56,7 @@ export function RentCollectionClient({
   }, [payments]);
 
   async function updatePayment(id: string, data: Partial<RentPaymentRow> & { receivedAmount?: number; notes?: string }) {
+    if (!canManage) return;
     setError("");
     setSaving(true);
     const response = await fetch(`/api/rent-payments/${id}`, {
@@ -73,6 +76,7 @@ export function RentCollectionClient({
 
   async function createPayment(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (!canManage) return;
     setError("");
     setSaving(true);
     const form = new FormData(event.currentTarget);
@@ -117,6 +121,10 @@ export function RentCollectionClient({
 
   async function sendWhatsAppReminder(payment: RentPaymentRow) {
     setError("");
+    if (!canManage) {
+      setError("Read-only viewers cannot send WhatsApp reminders.");
+      return;
+    }
     if (!payment.flat?.tenantPhone) {
       setError("Tenant phone number is missing for this flat.");
       return;
@@ -163,12 +171,20 @@ export function RentCollectionClient({
       </div>
 
       <div className="mb-4 flex flex-wrap gap-3">
-        <button onClick={() => setOpen(true)} className="inline-flex items-center gap-2 rounded-md bg-pine px-4 py-2 text-sm font-semibold text-white hover:bg-pine/90">
-          <Plus size={16} /> Add rent
-        </button>
-        <button className="inline-flex items-center justify-center gap-2 rounded-md border border-slate-200 bg-white px-4 py-2 text-sm font-semibold dark:border-slate-700 dark:bg-slate-900">
-          <MessageCircle size={16} /> WhatsApp reminder
-        </button>
+        {canManage ? (
+          <>
+            <button onClick={() => setOpen(true)} className="inline-flex items-center gap-2 rounded-md bg-pine px-4 py-2 text-sm font-semibold text-white hover:bg-pine/90">
+              <Plus size={16} /> Add rent
+            </button>
+            <button className="inline-flex items-center justify-center gap-2 rounded-md border border-slate-200 bg-white px-4 py-2 text-sm font-semibold dark:border-slate-700 dark:bg-slate-900">
+              <MessageCircle size={16} /> WhatsApp reminder
+            </button>
+          </>
+        ) : (
+          <span className="rounded-md border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-500 dark:border-slate-700 dark:bg-slate-900">
+            Read-only access
+          </span>
+        )}
         {saving && <span className="self-center text-sm text-slate-500">Saving...</span>}
       </div>
       {error && (
@@ -203,6 +219,9 @@ export function RentCollectionClient({
                 <td className="max-w-[220px] truncate text-slate-500">{payment.notes || "-"}</td>
                 <td>
                   <div className="flex flex-wrap gap-2">
+                    {!canManage && <span className="text-xs font-medium text-slate-500">View only</span>}
+                    {canManage && (
+                      <>
                     <button
                       onClick={() => updatePayment(payment.id, { status: "PAID", receivedAmount: Number(payment.expectedAmount) })}
                       className="rounded-md bg-pine px-3 py-1.5 text-xs font-semibold text-white"
@@ -227,6 +246,8 @@ export function RentCollectionClient({
                     >
                       Send WhatsApp
                     </button>
+                      </>
+                    )}
                   </div>
                 </td>
               </tr>
@@ -240,7 +261,7 @@ export function RentCollectionClient({
         </table>
       </div>
 
-      {open && (
+      {open && canManage && (
         <div className="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4">
           <form onSubmit={createPayment} className="w-full max-w-2xl rounded-md bg-white p-5 shadow-soft dark:bg-[#151b1e]">
             <div className="mb-4 flex items-center justify-between">
@@ -279,7 +300,7 @@ export function RentCollectionClient({
         </div>
       )}
 
-      {remarkFor && (
+      {remarkFor && canManage && (
         <div className="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4">
           <form
             onSubmit={(event) => {

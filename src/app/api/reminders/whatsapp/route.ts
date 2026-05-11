@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { Role } from "@prisma/client";
 import { z } from "zod";
 import { requireUser } from "@/lib/auth";
 
@@ -20,7 +21,7 @@ function normalizePhone(phone: string) {
 }
 
 export async function POST(request: Request) {
-  await requireUser();
+  await requireUser([Role.OWNER_ADMIN, Role.ACCOUNTANT_MANAGER]);
   const input = reminderSchema.parse(await request.json());
   const phone = normalizePhone(input.phone);
   const text =

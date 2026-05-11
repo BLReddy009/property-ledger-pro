@@ -59,16 +59,18 @@ Modern full-stack property finance platform for owners and apartment building ma
 
 6. Open `http://localhost:3000`.
 
-Demo login:
+Demo logins:
 
-- Email: `admin@propertyledger.pro`
-- Password: `Demo@12345`
+- Owner/Admin: `admin@propertyledger.pro`
+- Accountant/Manager: `manager@propertyledger.pro`
+- Read-only Viewer: `viewer@propertyledger.pro`
+- Password for all demo users: `Demo@12345`
 
 ## Production Notes
 
 - Set a strong `AUTH_SECRET`.
 - Put uploaded documents in durable object storage such as S3, Azure Blob, or GCS for production.
-- Restrict API routes by role before exposing sensitive write operations to larger teams.
+- Owner/Admin can manage users and all records, Accountant/Manager can create and update operating records, and Read-only Viewer can browse reports without editing data.
 - Add mail/SMS/WhatsApp providers for reminder delivery.
 - Run `prisma migrate deploy` during deployment.
 

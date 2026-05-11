@@ -16,6 +16,8 @@ import {
   Droplets
 } from "lucide-react";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { getFreshSessionUser } from "@/lib/auth";
+import { roleLabel } from "@/lib/roles";
 
 const nav = [
   { href: "/", label: "Dashboard", icon: Home },
@@ -31,7 +33,9 @@ const nav = [
   { href: "/settings", label: "Settings", icon: Settings }
 ];
 
-export function AppShell({ children }: { children: React.ReactNode }) {
+export async function AppShell({ children }: { children: React.ReactNode }) {
+  const user = await getFreshSessionUser();
+
   return (
     <div className="min-h-screen lg:flex">
       <aside className="no-print sticky top-0 z-20 border-b border-slate-200 bg-white/95 backdrop-blur dark:border-slate-800 dark:bg-[#111719]/95 lg:h-screen lg:w-72 lg:border-b-0 lg:border-r">
@@ -69,6 +73,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             <input className="w-full border-0 bg-transparent p-0 focus:ring-0" placeholder="Search flats, tenants, vendors, bills, assets..." />
           </div>
           <div className="flex items-center gap-3">
+            {user && (
+              <div className="text-right text-sm">
+                <p className="font-semibold leading-tight">{user.name}</p>
+                <p className="text-xs text-slate-500">{roleLabel(user.role)}</p>
+              </div>
+            )}
             <button className="relative grid h-10 w-10 place-items-center rounded-md border border-slate-200 bg-white text-slate-700 shadow-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100">
               <Bell size={18} />
               <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-coral" />

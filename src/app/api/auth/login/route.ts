@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
-import { Role } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { createSession, hashPassword, verifyPassword } from "@/lib/auth";
+import { demoUsers } from "@/lib/roles";
 import { loginSchema } from "@/lib/validations";
 
 export async function POST(request: Request) {
@@ -9,14 +9,26 @@ export async function POST(request: Request) {
     const input = loginSchema.parse(await request.json());
     let user = await prisma.user.findUnique({ where: { email: input.email } });
 
-    if (!user && input.email === "admin@propertyledger.pro" && input.password === "Demo@12345") {
-      user = await prisma.user.create({
-        data: {
-          name: "Demo Owner",
+    const demoLogin = demoUsers.find((demo) => demo.email === input.email && demo.password === input.password);
+
+    if (demoLogin) {
+      const passwordMatches = user ? await verifyPassword(input.password, user.passwordHash) : false;
+      const demoPasswordHash = passwordMatches && user ? user.passwordHash : await hashPassword(input.password);
+
+      user = await prisma.user.upsert({
+        where: { email: input.email },
+        create: {
+          name: demoLogin.name,
           email: input.email,
-          passwordHash: await hashPassword(input.password),
-          role: Role.OWNER_ADMIN
-        }
+          passwordHash: demoPasswordHash,
+          role: demoLogin.role
+        },
+        update: passwordMatches
+          ? { role: demoLogin.role }
+          : {
+              passwordHash: demoPasswordHash,
+              role: demoLogin.role
+            }
       });
     }
 

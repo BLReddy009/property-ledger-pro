@@ -1,21 +1,27 @@
 import bcrypt from "bcryptjs";
 import { PrismaClient, PaymentMethod, RentStatus, Role } from "@prisma/client";
+import { demoUsers } from "../src/lib/roles";
 
 const prisma = new PrismaClient();
 
 async function main() {
-  const passwordHash = await bcrypt.hash("Demo@12345", 12);
+  const demoPasswordHash = await bcrypt.hash("Demo@12345", 12);
 
-  const admin = await prisma.user.upsert({
-    where: { email: "admin@propertyledger.pro" },
-    update: {},
-    create: {
-      name: "Demo Owner",
-      email: "admin@propertyledger.pro",
-      passwordHash,
-      role: Role.OWNER_ADMIN
-    }
-  });
+  const demoAccounts = await Promise.all(
+    demoUsers.map((user) =>
+      prisma.user.upsert({
+        where: { email: user.email },
+        update: { name: user.name, role: user.role, passwordHash: demoPasswordHash },
+        create: {
+          name: user.name,
+          email: user.email,
+          passwordHash: demoPasswordHash,
+          role: user.role
+        }
+      })
+    )
+  );
+  const admin = demoAccounts.find((user) => user.role === Role.OWNER_ADMIN) ?? demoAccounts[0];
 
   const property = await prisma.property.create({
     data: {

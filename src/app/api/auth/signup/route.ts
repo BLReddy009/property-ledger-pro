@@ -1,9 +1,15 @@
 import { NextResponse } from "next/server";
+import { Role } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import { createSession, hashPassword } from "@/lib/auth";
+import { createSession, hashPassword, requireUser } from "@/lib/auth";
 import { signupSchema } from "@/lib/validations";
 
 export async function POST(request: Request) {
+  const userCount = await prisma.user.count();
+  if (userCount > 0) {
+    await requireUser([Role.OWNER_ADMIN]);
+  }
+
   const input = signupSchema.parse(await request.json());
   const existing = await prisma.user.findUnique({ where: { email: input.email } });
   if (existing) {

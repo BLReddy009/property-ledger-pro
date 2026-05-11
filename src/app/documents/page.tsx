@@ -2,17 +2,20 @@ import { FileText } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { PageTitle } from "@/components/page-title";
 import { UploadBox } from "@/components/upload-box";
+import { getFreshSessionUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { canManageRecords } from "@/lib/roles";
 
 export const dynamic = "force-dynamic";
 
 export default async function DocumentsPage() {
+  const user = await getFreshSessionUser();
   const docs = await prisma.document.findMany({ orderBy: { createdAt: "desc" }, take: 20 }).catch(() => []);
   return (
     <AppShell>
       <PageTitle title="Documents" description="Secure storage for bills, invoices, warranty cards, contracts, agreements, photos, and receipts." />
       <div className="grid gap-6 xl:grid-cols-[360px_1fr]">
-        <UploadBox />
+        <UploadBox canUpload={canManageRecords(user?.role)} />
         <div className="grid gap-3">
           {docs.map((doc) => (
             <article key={doc.id} className="flex items-center justify-between rounded-md border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-[#151b1e]">

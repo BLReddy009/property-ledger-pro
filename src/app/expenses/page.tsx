@@ -1,12 +1,15 @@
 import { AppShell } from "@/components/app-shell";
 import { PageTitle } from "@/components/page-title";
 import { UploadBox } from "@/components/upload-box";
+import { getFreshSessionUser } from "@/lib/auth";
 import { currency } from "@/lib/format";
 import { prisma } from "@/lib/prisma";
+import { canManageRecords } from "@/lib/roles";
 
 export const dynamic = "force-dynamic";
 
 export default async function ExpensesPage() {
+  const user = await getFreshSessionUser();
   const expenses = await prisma.expenseRecord.findMany({ include: { flat: { include: { property: true } }, account: true }, orderBy: { paymentDate: "desc" } }).catch(() => []);
   return (
     <AppShell>
@@ -33,7 +36,7 @@ export default async function ExpensesPage() {
           </table>
         </div>
         <aside className="space-y-4">
-          <UploadBox />
+          <UploadBox canUpload={canManageRecords(user?.role)} />
           <div className="rounded-md border border-slate-200 bg-white p-5 text-sm shadow-sm dark:border-slate-800 dark:bg-[#151b1e]">
             <h2 className="font-semibold">Smart insight</h2>
             <p className="mt-2 text-slate-500">Electrical and plumbing are the highest recurring categories in the current demo ledger.</p>
