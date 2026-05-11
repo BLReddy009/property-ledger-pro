@@ -4,7 +4,13 @@ export const signupSchema = z.object({
   name: z.string().min(2),
   email: z.string().trim().toLowerCase().email(),
   password: z.string().min(8),
-  role: z.enum(["OWNER_ADMIN", "ACCOUNTANT_MANAGER", "READ_ONLY_VIEWER"]).default("OWNER_ADMIN")
+  role: z.enum(["OWNER_ADMIN", "ACCOUNTANT_MANAGER", "READ_ONLY_VIEWER", "TENANT"]).default("OWNER_ADMIN"),
+  flatId: z.string().optional().or(z.literal(""))
+});
+
+export const createUserSchema = signupSchema.refine((input) => input.role !== "TENANT" || Boolean(input.flatId), {
+  message: "Tenant users must be assigned to a flat.",
+  path: ["flatId"]
 });
 
 export const loginSchema = z.object({

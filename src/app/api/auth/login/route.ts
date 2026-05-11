@@ -52,7 +52,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ message: "Invalid email or password" }, { status: 401 });
     }
 
-    await createSession({ id: user.id, name: user.name, email: user.email, role: user.role });
+    await createSession({ id: user.id, name: user.name, email: user.email, role: user.role, flatId: user.flatId });
 
     if (!user.id.startsWith("demo-")) {
       prisma.auditLog

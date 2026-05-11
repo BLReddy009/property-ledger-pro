@@ -31,5 +31,10 @@ export function canManageRecords(role?: Role | null) {
 }
 
 export function roleLabel(role?: Role | null) {
+  if (role === Role.TENANT) return "Tenant";
   return demoUsers.find((user) => user.role === role)?.label ?? "Unknown";
+}
+
+export function isTenant(role?: Role | null) {
+  return role === Role.TENANT;
 }

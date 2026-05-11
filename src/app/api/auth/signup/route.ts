@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { Role } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { createSession, hashPassword, requireUser } from "@/lib/auth";
-import { signupSchema } from "@/lib/validations";
+import { createUserSchema } from "@/lib/validations";
 
 export async function POST(request: Request) {
   const userCount = await prisma.user.count();
@@ -10,7 +10,7 @@ export async function POST(request: Request) {
     await requireUser([Role.OWNER_ADMIN]);
   }
 
-  const input = signupSchema.parse(await request.json());
+  const input = createUserSchema.parse(await request.json());
   const existing = await prisma.user.findUnique({ where: { email: input.email } });
   if (existing) {
     return NextResponse.json({ message: "Email already registered" }, { status: 409 });
@@ -21,10 +21,11 @@ export async function POST(request: Request) {
       name: input.name,
       email: input.email,
       passwordHash: await hashPassword(input.password),
-      role: input.role
+      role: input.role,
+      flatId: input.role === Role.TENANT ? input.flatId || undefined : undefined
     }
   });
 
-  await createSession({ id: user.id, name: user.name, email: user.email, role: user.role });
+  await createSession({ id: user.id, name: user.name, email: user.email, role: user.role, flatId: user.flatId });
   return NextResponse.json({ id: user.id, name: user.name, email: user.email, role: user.role });
 }

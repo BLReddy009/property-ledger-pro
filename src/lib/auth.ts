@@ -12,6 +12,7 @@ export type SessionUser = {
   name: string;
   email: string;
   role: Role;
+  flatId?: string | null;
 };
 
 export async function hashPassword(password: string) {
@@ -71,7 +72,7 @@ export async function getFreshSessionUser() {
   return prisma.user
     .findUnique({
       where: { id: session.id },
-      select: { id: true, name: true, email: true, role: true, currency: true, locale: true }
+      select: { id: true, name: true, email: true, role: true, flatId: true, currency: true, locale: true }
     })
     .catch(() => ({ ...session, currency: "INR", locale: "en" }));
 }

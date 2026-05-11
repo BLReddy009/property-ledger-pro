@@ -13,7 +13,8 @@ import {
   Settings,
   WalletCards,
   Wrench,
-  Droplets
+  Droplets,
+  KeyRound
 } from "lucide-react";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { getFreshSessionUser } from "@/lib/auth";
@@ -34,8 +35,11 @@ const nav = [
   { href: "/settings", label: "Settings", icon: Settings }
 ];
 
+const tenantNav = [{ href: "/tenant", label: "My Flat", icon: KeyRound }];
+
 export async function AppShell({ children }: { children: React.ReactNode }) {
   const user = await getFreshSessionUser();
+  const visibleNav = user?.role === "TENANT" ? tenantNav : nav;
 
   return (
     <div className="min-h-screen lg:flex">
@@ -56,7 +60,7 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
           </div>
         </div>
         <nav className="flex gap-1 overflow-x-auto px-3 pb-3 lg:block lg:space-y-1 lg:overflow-visible lg:px-4">
-          {nav.map((item) => (
+          {visibleNav.map((item) => (
             <Link
               href={item.href}
               key={item.href}

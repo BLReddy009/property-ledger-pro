@@ -10,6 +10,7 @@ enum Role {
   OWNER_ADMIN
   ACCOUNTANT_MANAGER
   READ_ONLY_VIEWER
+  TENANT
 }
 
 enum OccupancyStatus {
@@ -62,11 +63,15 @@ model User {
   email        String     @unique
   passwordHash String
   role         Role       @default(OWNER_ADMIN)
+  flatId       String?
+  flat         Flat?      @relation(fields: [flatId], references: [id], onDelete: SetNull)
   locale       String     @default("en")
   currency     String     @default("INR")
   createdAt    DateTime   @default(now())
   updatedAt    DateTime   @updatedAt
   auditLogs    AuditLog[]
+
+  @@index([flatId])
 }
 
 model Property {
@@ -113,6 +118,7 @@ model Flat {
   expenses        ExpenseRecord[]
   assets          Asset[]
   documents       Document[]
+  tenantUsers     User[]
 
   @@unique([propertyId, flatNumber])
   @@index([tenantName])

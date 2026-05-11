@@ -23,6 +23,7 @@ Modern full-stack property finance platform for owners and apartment building ma
 - Reports with PDF, Excel, CSV API, and print-friendly mode
 - Document storage for bills, invoices, warranty cards, contracts, agreements, photos, and receipts
 - Settings for roles, currency, language readiness, backup/restore surface, and operational defaults
+- Owner-managed user creation, including tenant logins assigned to one flat only
 
 ## Local Setup
 
@@ -71,6 +72,7 @@ Demo logins:
 - Set a strong `AUTH_SECRET`.
 - Put uploaded documents in durable object storage such as S3, Azure Blob, or GCS for production.
 - Owner/Admin can manage users and all records, Accountant/Manager can create and update operating records, and Read-only Viewer can browse reports without editing data.
+- Tenant logins are assigned to one flat and are redirected to `/tenant`, where they can only see their own flat details.
 - Add mail/SMS/WhatsApp providers for reminder delivery.
 - Run `prisma migrate deploy` during deployment.
 
