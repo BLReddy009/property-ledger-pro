@@ -9,6 +9,7 @@ type FlatOption = {
   id: string;
   flatNumber: string;
   tenantName: string | null;
+  tenantPhone?: string | null;
   monthlyRent: { toString(): string } | string | number;
   property: { name: string };
 };
@@ -44,6 +45,7 @@ export function RentCollectionClient({
   const [open, setOpen] = useState(false);
   const [remarkFor, setRemarkFor] = useState<RentPaymentRow | null>(null);
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
 
   const totals = useMemo(() => {
     const expected = payments.reduce((sum, item) => sum + Number(item.expectedAmount), 0);
@@ -52,6 +54,7 @@ export function RentCollectionClient({
   }, [payments]);
 
   async function updatePayment(id: string, data: Partial<RentPaymentRow> & { receivedAmount?: number; notes?: string }) {
+    setError("");
     setSaving(true);
     const response = await fetch(`/api/rent-payments/${id}`, {
       method: "PATCH",
@@ -59,13 +62,18 @@ export function RentCollectionClient({
       body: JSON.stringify(data)
     });
     setSaving(false);
-    if (!response.ok) return;
+    if (!response.ok) {
+      const result = await response.json().catch(() => null);
+      setError(result?.message || "Could not update rent status. Please login again and check database setup.");
+      return;
+    }
     const updated = await response.json();
     setPayments((items) => items.map((item) => (item.id === id ? updated : item)));
   }
 
   async function createPayment(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    setError("");
     setSaving(true);
     const form = new FormData(event.currentTarget);
     const flat = flats.find((item) => item.id === form.get("flatId"));
@@ -91,7 +99,11 @@ export function RentCollectionClient({
       })
     });
     setSaving(false);
-    if (!response.ok) return;
+    if (!response.ok) {
+      const result = await response.json().catch(() => null);
+      setError(result?.message || "Could not save rent collection. Please check the selected flat and database setup.");
+      return;
+    }
     const created = await response.json();
     const decorated = {
       ...created,
@@ -101,6 +113,36 @@ export function RentCollectionClient({
     setPayments((items) => [decorated, ...items]);
     setOpen(false);
     event.currentTarget.reset();
+  }
+
+  async function sendWhatsAppReminder(payment: RentPaymentRow) {
+    setError("");
+    if (!payment.flat?.tenantPhone) {
+      setError("Tenant phone number is missing for this flat.");
+      return;
+    }
+    const pendingAmount = Math.max(Number(payment.expectedAmount) - Number(payment.receivedAmount), 0);
+    const response = await fetch("/api/reminders/whatsapp", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        phone: payment.flat.tenantPhone,
+        tenantName: payment.flat.tenantName,
+        flatNumber: payment.flat.flatNumber,
+        propertyName: payment.flat.property.name,
+        amount: pendingAmount,
+        month: payment.month,
+        year: payment.year
+      })
+    });
+    const result = await response.json().catch(() => null);
+    if (result?.fallbackUrl) {
+      window.open(result.fallbackUrl, "_blank", "noopener,noreferrer");
+      return;
+    }
+    if (!response.ok) {
+      setError(result?.message || "Could not send WhatsApp reminder.");
+    }
   }
 
   return (
@@ -129,6 +171,11 @@ export function RentCollectionClient({
         </button>
         {saving && <span className="self-center text-sm text-slate-500">Saving...</span>}
       </div>
+      {error && (
+        <div className="mb-4 rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700 dark:border-red-900/60 dark:bg-red-950/40 dark:text-red-300">
+          {error}
+        </div>
+      )}
 
       <div className="overflow-x-auto rounded-md border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-[#151b1e]">
         <table className="w-full min-w-[1080px] text-sm">
@@ -173,6 +220,12 @@ export function RentCollectionClient({
                       className="rounded-md border border-slate-200 px-3 py-1.5 text-xs font-semibold dark:border-slate-700"
                     >
                       Remark
+                    </button>
+                    <button
+                      onClick={() => sendWhatsAppReminder(payment)}
+                      className="rounded-md border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-300"
+                    >
+                      Send WhatsApp
                     </button>
                   </div>
                 </td>

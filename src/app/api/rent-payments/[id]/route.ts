@@ -11,30 +11,36 @@ const updateSchema = z.object({
 });
 
 export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
-  const user = await requireUser([Role.OWNER_ADMIN, Role.ACCOUNTANT_MANAGER]);
-  const { id } = await params;
-  const input = updateSchema.parse(await request.json());
-  const before = await prisma.rentPayment.findUnique({ where: { id } });
-  if (!before) {
-    return NextResponse.json({ message: "Rent payment not found" }, { status: 404 });
-  }
-
-  const payment = await prisma.rentPayment.update({
-    where: { id },
-    data: input,
-    include: { flat: { include: { property: true } }, account: true }
-  });
-
-  await prisma.auditLog.create({
-    data: {
-      userId: user.id,
-      action: "UPDATE",
-      entity: "RentPayment",
-      entityId: payment.id,
-      before: JSON.parse(JSON.stringify(before)),
-      after: input
+  try {
+    const user = await requireUser([Role.OWNER_ADMIN, Role.ACCOUNTANT_MANAGER]);
+    const { id } = await params;
+    const input = updateSchema.parse(await request.json());
+    const before = await prisma.rentPayment.findUnique({ where: { id } });
+    if (!before) {
+      return NextResponse.json({ message: "Rent payment not found" }, { status: 404 });
     }
-  });
 
-  return NextResponse.json(payment);
+    const payment = await prisma.rentPayment.update({
+      where: { id },
+      data: input,
+      include: { flat: { include: { property: true } }, account: true }
+    });
+
+    await prisma.auditLog.create({
+      data: {
+        userId: user.id,
+        action: "UPDATE",
+        entity: "RentPayment",
+        entityId: payment.id,
+        before: JSON.parse(JSON.stringify(before)),
+        after: input
+      }
+    });
+
+    return NextResponse.json(payment);
+  } catch (error) {
+    if (error instanceof Response) return error;
+    console.error(error);
+    return NextResponse.json({ message: "Could not update rent collection." }, { status: 500 });
+  }
 }

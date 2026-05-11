@@ -19,9 +19,11 @@ export function PropertiesClient({ initialProperties }: { initialProperties: Pro
   const [properties, setProperties] = useState(initialProperties);
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
 
   async function createProperty(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    setError("");
     setSaving(true);
     const form = new FormData(event.currentTarget);
     const response = await fetch("/api/properties", {
@@ -40,7 +42,11 @@ export function PropertiesClient({ initialProperties }: { initialProperties: Pro
       })
     });
     setSaving(false);
-    if (!response.ok) return;
+    if (!response.ok) {
+      const result = await response.json().catch(() => null);
+      setError(result?.message || "Property was not saved. Please login again and check database setup.");
+      return;
+    }
     const created = await response.json();
     setProperties((items) => [{ ...created, flats: [] }, ...items]);
     setOpen(false);
@@ -54,6 +60,11 @@ export function PropertiesClient({ initialProperties }: { initialProperties: Pro
           <Plus size={16} /> New property
         </button>
       </div>
+      {error && (
+        <div className="mb-4 rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700 dark:border-red-900/60 dark:bg-red-950/40 dark:text-red-300">
+          {error}
+        </div>
+      )}
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         {properties.map((property) => (
@@ -77,6 +88,15 @@ export function PropertiesClient({ initialProperties }: { initialProperties: Pro
             </div>
           </article>
         ))}
+        {!properties.length && (
+          <div className="rounded-md border border-dashed border-slate-300 bg-white p-8 text-center dark:border-slate-700 dark:bg-[#151b1e] md:col-span-2 xl:col-span-3">
+            <h2 className="text-lg font-semibold">Create your first property</h2>
+            <p className="mt-2 text-sm text-slate-500">Add a building, enable facilities, then start adding flats, rent collections, expenses, and documents.</p>
+            <button onClick={() => setOpen(true)} className="mt-4 inline-flex items-center gap-2 rounded-md bg-pine px-4 py-2 text-sm font-semibold text-white">
+              <Plus size={16} /> New property
+            </button>
+          </div>
+        )}
       </div>
 
       {open && (

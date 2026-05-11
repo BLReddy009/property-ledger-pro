@@ -18,11 +18,20 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  const user = await requireUser([Role.OWNER_ADMIN, Role.ACCOUNTANT_MANAGER]);
-  const input = rentPaymentSchema.parse(await request.json());
-  const payment = await prisma.rentPayment.create({ data: input });
-  await prisma.auditLog.create({
-    data: { userId: user.id, action: "CREATE", entity: "RentPayment", entityId: payment.id, after: input }
-  });
-  return NextResponse.json(payment, { status: 201 });
+  try {
+    const user = await requireUser([Role.OWNER_ADMIN, Role.ACCOUNTANT_MANAGER]);
+    const input = rentPaymentSchema.parse(await request.json());
+    const payment = await prisma.rentPayment.create({
+      data: input,
+      include: { flat: { include: { property: true } }, account: true }
+    });
+    await prisma.auditLog.create({
+      data: { userId: user.id, action: "CREATE", entity: "RentPayment", entityId: payment.id, after: input }
+    });
+    return NextResponse.json(payment, { status: 201 });
+  } catch (error) {
+    if (error instanceof Response) return error;
+    console.error(error);
+    return NextResponse.json({ message: "Could not save rent collection. Please check database setup." }, { status: 500 });
+  }
 }
