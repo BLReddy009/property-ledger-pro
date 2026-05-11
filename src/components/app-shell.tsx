@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { getFreshSessionUser } from "@/lib/auth";
+import { LogoutButton } from "@/components/logout-button";
 import { roleLabel } from "@/lib/roles";
 
 const nav = [
@@ -49,8 +50,9 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
               <span className="block text-xs font-medium text-slate-500">Pro</span>
             </span>
           </Link>
-          <div className="lg:hidden">
+          <div className="flex items-center gap-2 lg:hidden">
             <ThemeToggle />
+            <LogoutButton compact />
           </div>
         </div>
         <nav className="flex gap-1 overflow-x-auto px-3 pb-3 lg:block lg:space-y-1 lg:overflow-visible lg:px-4">
@@ -65,6 +67,9 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
             </Link>
           ))}
         </nav>
+        <div className="hidden border-t border-slate-200 p-4 dark:border-slate-800 lg:block">
+          <LogoutButton />
+        </div>
       </aside>
       <main className="flex-1">
         <header className="no-print sticky top-0 z-10 hidden h-20 items-center justify-between border-b border-slate-200 bg-mist/90 px-8 backdrop-blur dark:border-slate-800 dark:bg-[#101416]/90 lg:flex">
@@ -84,6 +89,7 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
               <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-coral" />
             </button>
             <ThemeToggle />
+            <LogoutButton compact />
           </div>
         </header>
         <div className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 lg:px-8 lg:py-8">{children}</div>
