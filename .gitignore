@@ -2,7 +2,7 @@
 .env.local
 .next
 node_modules
-uploads
+/uploads
 dist
 coverage
 *.log
