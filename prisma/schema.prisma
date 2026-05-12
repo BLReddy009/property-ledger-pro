@@ -110,6 +110,12 @@ model Flat {
   securityDeposit Decimal         @db.Decimal(12, 2)
   leaseStart      DateTime?
   leaseEnd        DateTime?
+  agreementMonths Int             @default(11)
+  rentIncreasePct Decimal         @default(5) @db.Decimal(5, 2)
+  lastRentRevisionAt DateTime?
+  vacatedAt       DateTime?
+  depositDeductions Json?
+  depositRefundAmount Decimal?    @db.Decimal(12, 2)
   status          OccupancyStatus @default(OCCUPIED)
   notes           String?
   createdAt       DateTime        @default(now())

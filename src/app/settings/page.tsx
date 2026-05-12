@@ -1,20 +1,22 @@
 import { AppShell } from "@/components/app-shell";
+import { AccountManagementClient } from "@/components/account-management-client";
 import { PageTitle } from "@/components/page-title";
 import { UserManagementClient } from "@/components/user-management-client";
-import { getFreshSessionUser } from "@/lib/auth";
+import { getSession } from "@/lib/auth";
 import { canManageRecords, demoUsers, roleLabel } from "@/lib/roles";
 import { prisma } from "@/lib/prisma";
 import { Role } from "@prisma/client";
 
 export default async function SettingsPage() {
-  const user = await getFreshSessionUser();
+  const user = await getSession();
   const currentRole = roleLabel(user?.role);
   const canCreateUsers = user?.role === Role.OWNER_ADMIN;
+  const canManageAccounts = canManageRecords(user?.role);
   const accessRoles = [
     ...demoUsers,
     { role: Role.TENANT, label: "Tenant", email: "tenant login assigned to one flat" }
   ];
-  const [users, flats] = await Promise.all([
+  const [users, flats, accounts] = await Promise.all([
     canCreateUsers
       ? prisma.user.findMany({
           select: {
@@ -32,6 +34,17 @@ export default async function SettingsPage() {
       ? prisma.flat.findMany({
           select: { id: true, flatNumber: true, tenantName: true, property: { select: { name: true } } },
           orderBy: [{ property: { name: "asc" } }, { flatNumber: "asc" }]
+        }).catch(() => [])
+      : Promise.resolve([]),
+    canManageAccounts
+      ? prisma.account.findMany({
+          select: {
+            id: true,
+            name: true,
+            type: true,
+            property: { select: { id: true, name: true } }
+          },
+          orderBy: [{ property: { name: "asc" } }, { type: "asc" }, { name: "asc" }]
         }).catch(() => [])
       : Promise.resolve([])
   ]);
@@ -65,6 +78,7 @@ export default async function SettingsPage() {
           </div>
         </section>
         <UserManagementClient initialUsers={users} flats={flats} canCreate={canCreateUsers} />
+        <AccountManagementClient initialAccounts={accounts} canManage={canManageAccounts} />
         <section className="rounded-md border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-[#151b1e]">
           <h2 className="font-semibold">Operational defaults</h2>
           <div className="mt-4 grid gap-3">

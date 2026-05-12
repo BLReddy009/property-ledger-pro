@@ -2,20 +2,25 @@ import { FileText } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { PageTitle } from "@/components/page-title";
 import { UploadBox } from "@/components/upload-box";
-import { getFreshSessionUser } from "@/lib/auth";
+import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { canManageRecords } from "@/lib/roles";
 
 export const dynamic = "force-dynamic";
 
 export default async function DocumentsPage() {
-  const user = await getFreshSessionUser();
+  const user = await getSession();
   const docs = await prisma.document.findMany({ orderBy: { createdAt: "desc" }, take: 20 }).catch(() => []);
+  const properties = await prisma.property.findMany({ select: { id: true, name: true }, orderBy: { name: "asc" } }).catch(() => []);
+  const flats = await prisma.flat.findMany({
+    select: { id: true, flatNumber: true, property: { select: { name: true } } },
+    orderBy: [{ property: { name: "asc" } }, { flatNumber: "asc" }]
+  }).catch(() => []);
   return (
     <AppShell>
       <PageTitle title="Documents" description="Secure storage for bills, invoices, warranty cards, contracts, agreements, photos, and receipts." />
       <div className="grid gap-6 xl:grid-cols-[360px_1fr]">
-        <UploadBox canUpload={canManageRecords(user?.role)} />
+        <UploadBox canUpload={canManageRecords(user?.role)} properties={properties} flats={flats} />
         <div className="grid gap-3">
           {docs.map((doc) => (
             <article key={doc.id} className="flex items-center justify-between rounded-md border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-[#151b1e]">

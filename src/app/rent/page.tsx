@@ -1,17 +1,18 @@
 import { AppShell } from "@/components/app-shell";
 import { PageTitle } from "@/components/page-title";
 import { RentCollectionClient } from "@/components/rent-collection-client";
-import { getFreshSessionUser } from "@/lib/auth";
+import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { canManageRecords } from "@/lib/roles";
 
 export const dynamic = "force-dynamic";
 
 export default async function RentPage() {
-  const user = await getFreshSessionUser();
+  const user = await getSession();
   const payments = await prisma.rentPayment.findMany({
     include: { flat: { include: { property: true } }, account: true },
-    orderBy: { receivedDate: "desc" }
+    orderBy: { receivedDate: "desc" },
+    take: 100
   }).catch(() => []);
   const flats = await prisma.flat.findMany({
     include: { property: true },

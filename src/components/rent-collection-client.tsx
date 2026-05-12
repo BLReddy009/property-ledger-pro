@@ -46,14 +46,46 @@ export function RentCollectionClient({
   const [payments, setPayments] = useState(initialPayments);
   const [open, setOpen] = useState(false);
   const [remarkFor, setRemarkFor] = useState<RentPaymentRow | null>(null);
+  const [selectedFlatId, setSelectedFlatId] = useState("");
+  const [paymentChoice, setPaymentChoice] = useState<"PAID" | "PENDING" | "PARTIAL">("PAID");
+  const [collectedAmount, setCollectedAmount] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+
+  const selectedFlat = useMemo(() => flats.find((item) => item.id === selectedFlatId) ?? null, [flats, selectedFlatId]);
+  const selectedRent = selectedFlat ? Number(selectedFlat.monthlyRent) : 0;
 
   const totals = useMemo(() => {
     const expected = payments.reduce((sum, item) => sum + Number(item.expectedAmount), 0);
     const received = payments.reduce((sum, item) => sum + Number(item.receivedAmount), 0);
     return { expected, received, pending: Math.max(expected - received, 0) };
   }, [payments]);
+
+  function openCreateForm() {
+    setError("");
+    setSelectedFlatId("");
+    setPaymentChoice("PAID");
+    setCollectedAmount("");
+    setOpen(true);
+  }
+
+  function closeCreateForm() {
+    setOpen(false);
+  }
+
+  function selectFlat(flatId: string) {
+    const flat = flats.find((item) => item.id === flatId);
+    const rent = flat ? Number(flat.monthlyRent) : 0;
+    setSelectedFlatId(flatId);
+    setCollectedAmount(paymentChoice === "PAID" && flat ? String(rent) : paymentChoice === "PENDING" ? "0" : "");
+  }
+
+  function selectPaymentChoice(choice: "PAID" | "PENDING" | "PARTIAL") {
+    setPaymentChoice(choice);
+    if (choice === "PAID") setCollectedAmount(selectedFlat ? String(selectedRent) : "");
+    if (choice === "PENDING") setCollectedAmount("0");
+    if (choice === "PARTIAL") setCollectedAmount("");
+  }
 
   async function updatePayment(id: string, data: Partial<RentPaymentRow> & { receivedAmount?: number; notes?: string }) {
     if (!canManage) return;
@@ -77,12 +109,18 @@ export function RentCollectionClient({
   async function createPayment(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!canManage) return;
+    const formElement = event.currentTarget;
     setError("");
     setSaving(true);
-    const form = new FormData(event.currentTarget);
+    const form = new FormData(formElement);
     const flat = flats.find((item) => item.id === form.get("flatId"));
-    const receivedAmount = Number(form.get("receivedAmount") || 0);
-    const expectedAmount = Number(form.get("expectedAmount") || flat?.monthlyRent || 0);
+    const expectedAmount = Number(flat?.monthlyRent || 0);
+    const receivedAmount = paymentChoice === "PAID" ? expectedAmount : Number(form.get("receivedAmount") || 0);
+    const status = paymentChoice === "PENDING" || receivedAmount === 0
+      ? "PENDING"
+      : receivedAmount >= expectedAmount
+        ? "PAID"
+        : "PARTIALLY_PAID";
     const response = await fetch("/api/rent-payments", {
       method: "POST",
       headers: { "content-type": "application/json" },
@@ -98,7 +136,7 @@ export function RentCollectionClient({
         method: form.get("method"),
         transactionRef: form.get("transactionRef") || undefined,
         receivedDate: form.get("receivedDate"),
-        status: receivedAmount >= expectedAmount ? "PAID" : receivedAmount > 0 ? "PARTIALLY_PAID" : "PENDING",
+        status,
         notes: form.get("notes") || undefined
       })
     });
@@ -115,8 +153,11 @@ export function RentCollectionClient({
       account: accounts.find((item) => item.id === created.accountId) ?? null
     };
     setPayments((items) => [decorated, ...items]);
+    formElement.reset();
+    setSelectedFlatId("");
+    setPaymentChoice("PAID");
+    setCollectedAmount("");
     setOpen(false);
-    event.currentTarget.reset();
   }
 
   async function sendWhatsAppReminder(payment: RentPaymentRow) {
@@ -173,7 +214,7 @@ export function RentCollectionClient({
       <div className="mb-4 flex flex-wrap gap-3">
         {canManage ? (
           <>
-            <button onClick={() => setOpen(true)} className="inline-flex items-center gap-2 rounded-md bg-pine px-4 py-2 text-sm font-semibold text-white hover:bg-pine/90">
+            <button onClick={openCreateForm} className="inline-flex items-center gap-2 rounded-md bg-pine px-4 py-2 text-sm font-semibold text-white hover:bg-pine/90">
               <Plus size={16} /> Add rent
             </button>
             <button className="inline-flex items-center justify-center gap-2 rounded-md border border-slate-200 bg-white px-4 py-2 text-sm font-semibold dark:border-slate-700 dark:bg-slate-900">
@@ -266,32 +307,110 @@ export function RentCollectionClient({
           <form onSubmit={createPayment} className="w-full max-w-2xl rounded-md bg-white p-5 shadow-soft dark:bg-[#151b1e]">
             <div className="mb-4 flex items-center justify-between">
               <h2 className="flex items-center gap-2 text-lg font-semibold"><ReceiptText size={18} /> Add rent collection</h2>
-              <button type="button" onClick={() => setOpen(false)} className="grid h-9 w-9 place-items-center rounded-md border border-slate-200 dark:border-slate-700"><X size={16} /></button>
+              <button type="button" onClick={closeCreateForm} className="grid h-9 w-9 place-items-center rounded-md border border-slate-200 dark:border-slate-700"><X size={16} /></button>
             </div>
             <div className="grid gap-3 sm:grid-cols-2">
-              <select name="flatId" required>
-                <option value="">Select flat</option>
-                {flats.map((flat) => <option key={flat.id} value={flat.id}>{flat.property.name} / {flat.flatNumber} - {flat.tenantName}</option>)}
-              </select>
-              <select name="accountId">
-                <option value="">Select account</option>
-                {accounts.map((account) => <option key={account.id} value={account.id}>{account.name}</option>)}
-              </select>
-              <input name="month" type="number" min="1" max="12" placeholder="Month" defaultValue={new Date().getMonth() + 1} required />
-              <input name="year" type="number" placeholder="Year" defaultValue={new Date().getFullYear()} required />
-              <input name="expectedAmount" type="number" placeholder="Expected amount" required />
-              <input name="receivedAmount" type="number" placeholder="Collected amount" required />
-              <input name="lateFee" type="number" placeholder="Late fee" defaultValue="0" />
-              <input name="discount" type="number" placeholder="Discount" defaultValue="0" />
-              <select name="method" required>
-                <option value="UPI">UPI</option>
-                <option value="CASH">Cash</option>
-                <option value="BANK_TRANSFER">Bank transfer</option>
-                <option value="CHEQUE">Cheque</option>
-              </select>
-              <input name="receivedDate" type="date" defaultValue={new Date().toISOString().slice(0, 10)} required />
-              <input name="transactionRef" placeholder="Transaction ID / cheque no." />
-              <textarea name="notes" placeholder="Remark" className="sm:col-span-2" />
+              <label className="block text-sm font-medium">
+                Flat
+                <select name="flatId" value={selectedFlatId} onChange={(event) => selectFlat(event.target.value)} className="mt-2 w-full" required>
+                  <option value="">Select flat</option>
+                  {flats.map((flat) => <option key={flat.id} value={flat.id}>{flat.property.name} / {flat.flatNumber} - {flat.tenantName}</option>)}
+                </select>
+              </label>
+              <label className="block text-sm font-medium">
+                Account
+                <select name="accountId" className="mt-2 w-full">
+                  <option value="">Select account</option>
+                  {accounts.map((account) => <option key={account.id} value={account.id}>{account.name}</option>)}
+                </select>
+              </label>
+              <label className="block text-sm font-medium">
+                Month
+                <input name="month" type="number" min="1" max="12" placeholder="Month" defaultValue={new Date().getMonth() + 1} className="mt-2 w-full" required />
+              </label>
+              <label className="block text-sm font-medium">
+                Year
+                <input name="year" type="number" placeholder="Year" defaultValue={new Date().getFullYear()} className="mt-2 w-full" required />
+              </label>
+              <label className="block text-sm font-medium">
+                Monthly rent
+                <div className="mt-2 rounded-md border border-slate-200 bg-slate-50 px-3 py-2 font-semibold dark:border-slate-700 dark:bg-slate-900">
+                  {selectedFlat ? currency(selectedRent) : "Select a flat"}
+                </div>
+              </label>
+              <div className="sm:col-span-2">
+                <p className="text-sm font-medium">Payment status</p>
+                <div className="mt-2 grid gap-2 sm:grid-cols-3">
+                  <button
+                    type="button"
+                    onClick={() => selectPaymentChoice("PAID")}
+                    className={`rounded-md border px-3 py-2 text-sm font-semibold ${paymentChoice === "PAID" ? "border-pine bg-pine text-white" : "border-slate-200 dark:border-slate-700"}`}
+                  >
+                    Full paid
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => selectPaymentChoice("PENDING")}
+                    className={`rounded-md border px-3 py-2 text-sm font-semibold ${paymentChoice === "PENDING" ? "border-coral bg-coral text-white" : "border-slate-200 dark:border-slate-700"}`}
+                  >
+                    Pending
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => selectPaymentChoice("PARTIAL")}
+                    className={`rounded-md border px-3 py-2 text-sm font-semibold ${paymentChoice === "PARTIAL" ? "border-amber bg-amber text-white" : "border-slate-200 dark:border-slate-700"}`}
+                  >
+                    Partial paid
+                  </button>
+                </div>
+              </div>
+              <label className="block text-sm font-medium sm:col-span-2">
+                Collected amount
+                <input
+                  name="receivedAmount"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  placeholder="Collected amount"
+                  value={collectedAmount}
+                  onChange={(event) => {
+                    setCollectedAmount(event.target.value);
+                    if (paymentChoice !== "PARTIAL") setPaymentChoice("PARTIAL");
+                  }}
+                  readOnly={paymentChoice !== "PARTIAL"}
+                  className="mt-2 w-full"
+                  required
+                />
+              </label>
+              <label className="block text-sm font-medium">
+                Late fee
+                <input name="lateFee" type="number" placeholder="Late fee" defaultValue="0" className="mt-2 w-full" />
+              </label>
+              <label className="block text-sm font-medium">
+                Discount
+                <input name="discount" type="number" placeholder="Discount" defaultValue="0" className="mt-2 w-full" />
+              </label>
+              <label className="block text-sm font-medium">
+                Payment method
+                <select name="method" className="mt-2 w-full" required>
+                  <option value="UPI">UPI</option>
+                  <option value="CASH">Cash</option>
+                  <option value="BANK_TRANSFER">Bank transfer</option>
+                  <option value="CHEQUE">Cheque</option>
+                </select>
+              </label>
+              <label className="block text-sm font-medium">
+                Received date
+                <input name="receivedDate" type="date" defaultValue={new Date().toISOString().slice(0, 10)} className="mt-2 w-full" required />
+              </label>
+              <label className="block text-sm font-medium">
+                Transaction reference
+                <input name="transactionRef" placeholder="Transaction ID / cheque no." className="mt-2 w-full" />
+              </label>
+              <label className="block text-sm font-medium sm:col-span-2">
+                Remark
+                <textarea name="notes" placeholder="Remark" className="mt-2 w-full" />
+              </label>
             </div>
             <button disabled={saving} className="mt-5 inline-flex items-center gap-2 rounded-md bg-pine px-4 py-2 text-sm font-semibold text-white">
               <Save size={16} /> Save rent

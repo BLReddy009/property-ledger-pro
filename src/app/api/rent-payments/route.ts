@@ -3,6 +3,7 @@ import { Role } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { rentPaymentSchema } from "@/lib/validations";
 import { requireUser } from "@/lib/auth";
+import { recordAuditLog } from "@/lib/audit";
 
 export async function GET(request: Request) {
   await requireUser();
@@ -25,8 +26,12 @@ export async function POST(request: Request) {
       data: input,
       include: { flat: { include: { property: true } }, account: true }
     });
-    await prisma.auditLog.create({
-      data: { userId: user.id, action: "CREATE", entity: "RentPayment", entityId: payment.id, after: input }
+    await recordAuditLog({
+      userId: user.id,
+      action: "CREATE",
+      entity: "RentPayment",
+      entityId: payment.id,
+      after: input
     });
     return NextResponse.json(payment, { status: 201 });
   } catch (error) {

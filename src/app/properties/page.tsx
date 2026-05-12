@@ -1,14 +1,14 @@
 import { AppShell } from "@/components/app-shell";
 import { PageTitle } from "@/components/page-title";
 import { PropertiesClient } from "@/components/properties-client";
-import { getFreshSessionUser } from "@/lib/auth";
+import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { canManageRecords } from "@/lib/roles";
 
 export const dynamic = "force-dynamic";
 
 export default async function PropertiesPage() {
-  const user = await getFreshSessionUser();
+  const user = await getSession();
   const properties = await prisma.property.findMany({ include: { flats: true }, orderBy: { name: "asc" } }).catch(() => []);
 
   return (

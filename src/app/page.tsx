@@ -5,34 +5,46 @@ import { MetricCard } from "@/components/metric-card";
 import { PageTitle } from "@/components/page-title";
 import { StatusBadge } from "@/components/status-badge";
 import { currency, percent } from "@/lib/format";
+import { getDashboardMetrics } from "@/lib/dashboard-data";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
 
 async function getDashboard() {
   try {
-    const [rent, buildingExpenses, flatExpenses, flats, payments, notifications] = await Promise.all([
-      prisma.rentPayment.aggregate({ _sum: { receivedAmount: true, expectedAmount: true } }),
-      prisma.buildingExpense.aggregate({ _sum: { amount: true } }),
-      prisma.expenseRecord.aggregate({ _sum: { amount: true } }),
-      prisma.flat.findMany({ select: { status: true } }),
+    const [metrics, payments, notifications] = await Promise.all([
+      getDashboardMetrics(),
       prisma.rentPayment.findMany({
-        include: { flat: { include: { property: true } }, account: true },
+        select: {
+          id: true,
+          month: true,
+          year: true,
+          receivedAmount: true,
+          method: true,
+          status: true,
+          flat: {
+            select: {
+              flatNumber: true,
+              tenantName: true,
+              property: { select: { name: true } }
+            }
+          }
+        },
         orderBy: { receivedDate: "desc" },
         take: 6
       }),
-      prisma.notification.findMany({ orderBy: { dueDate: "asc" }, take: 5 })
+      prisma.notification.findMany({
+        select: { id: true, title: true, message: true },
+        orderBy: { dueDate: "asc" },
+        take: 5
+      })
     ]);
-    const expected = Number(rent._sum.expectedAmount ?? 0);
-    const collected = Number(rent._sum.receivedAmount ?? 0);
-    const expenses = Number(buildingExpenses._sum.amount ?? 0) + Number(flatExpenses._sum.amount ?? 0);
-    const occupied = flats.filter((flat) => flat.status === "OCCUPIED").length;
     return {
-      collected,
-      pending: Math.max(expected - collected, 0),
-      expenses,
-      profit: collected - expenses,
-      occupancy: flats.length ? (occupied / flats.length) * 100 : 0,
+      collected: metrics.collected,
+      pending: metrics.pending,
+      expenses: metrics.expenses,
+      profit: metrics.profit,
+      occupancy: metrics.occupancyRate,
       payments,
       notifications
     };

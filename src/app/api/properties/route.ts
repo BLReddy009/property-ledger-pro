@@ -1,8 +1,10 @@
 import { NextResponse } from "next/server";
 import { Role } from "@prisma/client";
+import { ZodError } from "zod";
 import { prisma } from "@/lib/prisma";
 import { propertySchema } from "@/lib/validations";
 import { requireUser } from "@/lib/auth";
+import { recordAuditLog } from "@/lib/audit";
 
 export async function GET() {
   await requireUser();
@@ -29,13 +31,21 @@ export async function POST(request: Request) {
         }
       }
     });
-    await prisma.auditLog.create({
-      data: { userId: user.id, action: "CREATE", entity: "Property", entityId: property.id, after: input }
+    await recordAuditLog({
+      userId: user.id,
+      action: "CREATE",
+      entity: "Property",
+      entityId: property.id,
+      after: input
     });
     return NextResponse.json(property, { status: 201 });
   } catch (error) {
     if (error instanceof Response) return error;
+    if (error instanceof ZodError) {
+      return NextResponse.json({ message: "Check the property name, address, and floor count." }, { status: 400 });
+    }
     console.error(error);
-    return NextResponse.json({ message: "Could not save property. Please check database setup." }, { status: 500 });
+    const detail = process.env.NODE_ENV === "development" && error instanceof Error ? ` ${error.message}` : "";
+    return NextResponse.json({ message: `Could not save property. Please check database setup.${detail}` }, { status: 500 });
   }
 }

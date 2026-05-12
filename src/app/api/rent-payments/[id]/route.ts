@@ -3,6 +3,7 @@ import { Role } from "@prisma/client";
 import { z } from "zod";
 import { requireUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { recordAuditLog } from "@/lib/audit";
 
 const updateSchema = z.object({
   status: z.enum(["PAID", "PARTIALLY_PAID", "PENDING", "OVERDUE"]).optional(),
@@ -26,15 +27,13 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
       include: { flat: { include: { property: true } }, account: true }
     });
 
-    await prisma.auditLog.create({
-      data: {
-        userId: user.id,
-        action: "UPDATE",
-        entity: "RentPayment",
-        entityId: payment.id,
-        before: JSON.parse(JSON.stringify(before)),
-        after: input
-      }
+    await recordAuditLog({
+      userId: user.id,
+      action: "UPDATE",
+      entity: "RentPayment",
+      entityId: payment.id,
+      before,
+      after: input
     });
 
     return NextResponse.json(payment);

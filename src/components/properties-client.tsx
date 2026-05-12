@@ -1,6 +1,6 @@
 "use client";
 
-import { Building2, Plus, Save, X } from "lucide-react";
+import { Building2, Home, Plus, Save, X } from "lucide-react";
 import { useState } from "react";
 
 type PropertyCard = {
@@ -18,14 +18,37 @@ type PropertyCard = {
 export function PropertiesClient({ initialProperties, canManage }: { initialProperties: PropertyCard[]; canManage: boolean }) {
   const [properties, setProperties] = useState(initialProperties);
   const [open, setOpen] = useState(false);
+  const [flatProperty, setFlatProperty] = useState<PropertyCard | null>(null);
   const [saving, setSaving] = useState(false);
+  const [savingFlat, setSavingFlat] = useState(false);
   const [error, setError] = useState("");
+
+  function openCreateForm() {
+    setError("");
+    setOpen(true);
+  }
+
+  function closeCreateForm() {
+    setError("");
+    setOpen(false);
+  }
+
+  function openFlatForm(property: PropertyCard) {
+    setError("");
+    setFlatProperty(property);
+  }
+
+  function closeFlatForm() {
+    setError("");
+    setFlatProperty(null);
+  }
 
   async function createProperty(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    const formElement = event.currentTarget;
     setError("");
     setSaving(true);
-    const form = new FormData(event.currentTarget);
+    const form = new FormData(formElement);
     const response = await fetch("/api/properties", {
       method: "POST",
       headers: { "content-type": "application/json" },
@@ -49,15 +72,64 @@ export function PropertiesClient({ initialProperties, canManage }: { initialProp
     }
     const created = await response.json();
     setProperties((items) => [{ ...created, flats: [] }, ...items]);
+    formElement.reset();
     setOpen(false);
-    event.currentTarget.reset();
+  }
+
+  async function createFlat(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!flatProperty) return;
+
+    const formElement = event.currentTarget;
+    const form = new FormData(formElement);
+    const payload = {
+      propertyId: flatProperty.id,
+      flatNumber: form.get("flatNumber"),
+      tenantName: form.get("tenantName") || undefined,
+      tenantPhone: form.get("tenantPhone") || undefined,
+      tenantEmail: form.get("tenantEmail") || undefined,
+      monthlyRent: Number(form.get("monthlyRent") || 0),
+      securityDeposit: Number(form.get("securityDeposit") || 0),
+      leaseStart: form.get("leaseStart") || undefined,
+      leaseEnd: form.get("leaseEnd") || undefined,
+      agreementMonths: Number(form.get("agreementMonths") || 11),
+      rentIncreasePct: Number(form.get("rentIncreasePct") || 5),
+      status: form.get("status"),
+      notes: form.get("notes") || undefined
+    };
+
+    setError("");
+    setSavingFlat(true);
+    const response = await fetch("/api/flats", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+    setSavingFlat(false);
+
+    if (!response.ok) {
+      const result = await response.json().catch(() => null);
+      setError(result?.message || "Flat was not saved. Check the flat number and rent details.");
+      return;
+    }
+
+    const created = await response.json();
+    setProperties((items) =>
+      items.map((property) =>
+        property.id === flatProperty.id
+          ? { ...property, flats: [...property.flats, { id: created.id }] }
+          : property
+      )
+    );
+    formElement.reset();
+    setFlatProperty(null);
   }
 
   return (
     <>
       <div className="mb-6 flex justify-end">
         {canManage ? (
-          <button onClick={() => setOpen(true)} className="inline-flex items-center gap-2 rounded-md bg-pine px-4 py-2 text-sm font-semibold text-white">
+          <button onClick={openCreateForm} className="inline-flex items-center gap-2 rounded-md bg-pine px-4 py-2 text-sm font-semibold text-white">
             <Plus size={16} /> New property
           </button>
         ) : (
@@ -92,6 +164,14 @@ export function PropertiesClient({ initialProperties, canManage }: { initialProp
               {property.hasLift && <span className="rounded-md bg-amber/15 px-2 py-1 text-amber">Lift</span>}
               {property.hasSecurityStaff && <span className="rounded-md bg-slate-100 px-2 py-1 text-slate-700">Security</span>}
             </div>
+            {canManage && (
+              <button
+                onClick={() => openFlatForm(property)}
+                className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-md border border-pine/30 px-4 py-2 text-sm font-semibold text-pine hover:bg-pine/10"
+              >
+                <Home size={16} /> Add flat
+              </button>
+            )}
           </article>
         ))}
         {!properties.length && (
@@ -99,7 +179,7 @@ export function PropertiesClient({ initialProperties, canManage }: { initialProp
             <h2 className="text-lg font-semibold">Create your first property</h2>
             <p className="mt-2 text-sm text-slate-500">Add a building, enable facilities, then start adding flats, rent collections, expenses, and documents.</p>
             {canManage && (
-              <button onClick={() => setOpen(true)} className="mt-4 inline-flex items-center gap-2 rounded-md bg-pine px-4 py-2 text-sm font-semibold text-white">
+              <button onClick={openCreateForm} className="mt-4 inline-flex items-center gap-2 rounded-md bg-pine px-4 py-2 text-sm font-semibold text-white">
                 <Plus size={16} /> New property
               </button>
             )}
@@ -112,7 +192,7 @@ export function PropertiesClient({ initialProperties, canManage }: { initialProp
           <form onSubmit={createProperty} className="w-full max-w-2xl rounded-md bg-white p-5 shadow-soft dark:bg-[#151b1e]">
             <div className="mb-4 flex items-center justify-between">
               <h2 className="text-lg font-semibold">New property</h2>
-              <button type="button" onClick={() => setOpen(false)} className="grid h-9 w-9 place-items-center rounded-md border border-slate-200 dark:border-slate-700"><X size={16} /></button>
+              <button type="button" onClick={closeCreateForm} className="grid h-9 w-9 place-items-center rounded-md border border-slate-200 dark:border-slate-700"><X size={16} /></button>
             </div>
             <div className="grid gap-3 sm:grid-cols-2">
               <input name="name" placeholder="Building name" required />
@@ -128,6 +208,78 @@ export function PropertiesClient({ initialProperties, canManage }: { initialProp
             </div>
             <button disabled={saving} className="mt-5 inline-flex items-center gap-2 rounded-md bg-pine px-4 py-2 text-sm font-semibold text-white">
               <Save size={16} /> Save property
+            </button>
+          </form>
+        </div>
+      )}
+
+      {flatProperty && canManage && (
+        <div className="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4">
+          <form onSubmit={createFlat} className="w-full max-w-2xl rounded-md bg-white p-5 shadow-soft dark:bg-[#151b1e]">
+            <div className="mb-4 flex items-start justify-between gap-4">
+              <div>
+                <h2 className="text-lg font-semibold">Add flat</h2>
+                <p className="mt-1 text-sm text-slate-500">{flatProperty.name}</p>
+              </div>
+              <button type="button" onClick={closeFlatForm} className="grid h-9 w-9 place-items-center rounded-md border border-slate-200 dark:border-slate-700"><X size={16} /></button>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-200">
+                Flat number
+                <input name="flatNumber" placeholder="Flat number" className="mt-2 w-full" required />
+              </label>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-200">
+                Status
+                <select name="status" defaultValue="VACANT" className="mt-2 w-full" required>
+                  <option value="VACANT">Vacant</option>
+                  <option value="OCCUPIED">Occupied</option>
+                  <option value="NOTICE">Notice</option>
+                  <option value="MAINTENANCE">Maintenance</option>
+                </select>
+              </label>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-200">
+                Tenant name
+                <input name="tenantName" placeholder="Tenant name" className="mt-2 w-full" />
+              </label>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-200">
+                Tenant phone
+                <input name="tenantPhone" placeholder="Tenant phone" className="mt-2 w-full" />
+              </label>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-200">
+                Tenant email
+                <input name="tenantEmail" type="email" placeholder="Tenant email" className="mt-2 w-full" />
+              </label>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-200">
+                Monthly rent
+                <input name="monthlyRent" type="number" min="0" step="0.01" placeholder="Monthly rent" className="mt-2 w-full" required />
+              </label>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-200">
+                Security deposit
+                <input name="securityDeposit" type="number" min="0" step="0.01" placeholder="Security deposit" className="mt-2 w-full" required />
+              </label>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-200">
+                Lease start
+                <input name="leaseStart" type="date" className="mt-2 w-full" />
+              </label>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-200">
+                Lease end
+                <input name="leaseEnd" type="date" className="mt-2 w-full" />
+              </label>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-200">
+                Agreement period
+                <input name="agreementMonths" type="number" min="1" defaultValue="11" className="mt-2 w-full" required />
+              </label>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-200">
+                Rent increase %
+                <input name="rentIncreasePct" type="number" min="0" max="100" step="0.01" defaultValue="5" className="mt-2 w-full" required />
+              </label>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 sm:col-span-2">
+                Notes
+                <textarea name="notes" placeholder="Notes" className="mt-2 w-full" />
+              </label>
+            </div>
+            <button disabled={savingFlat} className="mt-5 inline-flex items-center gap-2 rounded-md bg-pine px-4 py-2 text-sm font-semibold text-white">
+              <Save size={16} /> Save flat
             </button>
           </form>
         </div>

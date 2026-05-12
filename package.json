@@ -7,22 +7,22 @@
     "build": "prisma generate && next build",
     "vercel-build": "prisma generate && prisma migrate deploy && next build",
     "start": "next start",
-    "lint": "next lint",
+    "lint": "eslint .",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "prisma:studio": "prisma studio",
     "db:seed": "tsx prisma/seed.ts"
   },
   "dependencies": {
-    "@prisma/adapter-pg": "latest",
-    "@prisma/client": "latest",
+    "@prisma/adapter-pg": "^7.8.0",
+    "@prisma/client": "^7.8.0",
     "bcryptjs": "^2.4.3",
     "clsx": "^2.1.1",
     "date-fns": "^4.1.0",
     "jose": "^5.9.6",
     "jspdf": "^4.2.1",
     "lucide-react": "^0.475.0",
-    "next": "latest",
+    "next": "^16.2.6",
     "pg": "^8.13.1",
     "react": "latest",
     "react-dom": "latest",
@@ -39,10 +39,14 @@
     "autoprefixer": "^10.4.20",
     "eslint": "^9.18.0",
     "eslint-config-next": "latest",
-    "postcss": "^8.5.1",
-    "prisma": "latest",
+    "postcss": "^8.5.14",
+    "prisma": "^7.8.0",
     "tailwindcss": "^3.4.17",
     "tsx": "^4.19.2",
     "typescript": "^5.7.3"
+  },
+  "overrides": {
+    "@hono/node-server": "^2.0.2",
+    "postcss": "^8.5.14"
   }
 }

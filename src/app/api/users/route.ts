@@ -3,6 +3,7 @@ import { Role } from "@prisma/client";
 import { requireUser, hashPassword } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { createUserSchema } from "@/lib/validations";
+import { recordAuditLog } from "@/lib/audit";
 
 export async function GET() {
   await requireUser([Role.OWNER_ADMIN]);
@@ -56,14 +57,12 @@ export async function POST(request: Request) {
       }
     });
 
-    await prisma.auditLog.create({
-      data: {
-        userId: currentUser.id,
-        action: "CREATE",
-        entity: "User",
-        entityId: user.id,
-        after: { email: user.email, role: user.role, flatId: user.flatId }
-      }
+    await recordAuditLog({
+      userId: currentUser.id,
+      action: "CREATE",
+      entity: "User",
+      entityId: user.id,
+      after: { email: user.email, role: user.role, flatId: user.flatId }
     });
 
     return NextResponse.json(user, { status: 201 });

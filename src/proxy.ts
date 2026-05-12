@@ -3,6 +3,7 @@ import type { NextRequest } from "next/server";
 import { jwtVerify } from "jose";
 
 const publicPaths = ["/login", "/api/auth/login", "/api/auth/signup"];
+const publicFilePattern = /\.(?:svg|png|jpg|jpeg|gif|webp|ico|txt|xml|json|webmanifest)$/i;
 const secret = new TextEncoder().encode(process.env.AUTH_SECRET ?? "dev-secret-change-me");
 
 async function getSessionRole(request: NextRequest) {
@@ -17,6 +18,10 @@ async function getSessionRole(request: NextRequest) {
 }
 
 export async function proxy(request: NextRequest) {
+  if (publicFilePattern.test(request.nextUrl.pathname)) {
+    return NextResponse.next();
+  }
+
   const isPublic = publicPaths.some((path) => request.nextUrl.pathname.startsWith(path));
   const hasSession = request.cookies.has("plp_session");
   if (!isPublic && !hasSession && !request.nextUrl.pathname.startsWith("/api")) {

@@ -1,10 +1,10 @@
 import Link from "next/link";
+import Image from "next/image";
 import {
   BarChart3,
   Bell,
   Building2,
   FileArchive,
-  FileText,
   Home,
   Landmark,
   PackageCheck,
@@ -17,7 +17,7 @@ import {
   KeyRound
 } from "lucide-react";
 import { ThemeToggle } from "@/components/theme-toggle";
-import { getFreshSessionUser } from "@/lib/auth";
+import { getSession } from "@/lib/auth";
 import { LogoutButton } from "@/components/logout-button";
 import { roleLabel } from "@/lib/roles";
 
@@ -38,7 +38,7 @@ const nav = [
 const tenantNav = [{ href: "/tenant", label: "My Flat", icon: KeyRound }];
 
 export async function AppShell({ children }: { children: React.ReactNode }) {
-  const user = await getFreshSessionUser();
+  const user = await getSession();
   const visibleNav = user?.role === "TENANT" ? tenantNav : nav;
 
   return (
@@ -46,9 +46,7 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
       <aside className="no-print sticky top-0 z-20 border-b border-slate-200 bg-white/95 backdrop-blur dark:border-slate-800 dark:bg-[#111719]/95 lg:h-screen lg:w-72 lg:border-b-0 lg:border-r">
         <div className="flex h-16 items-center justify-between px-4 lg:h-20 lg:px-6">
           <Link href="/" className="flex items-center gap-3 font-semibold">
-            <span className="grid h-10 w-10 place-items-center rounded-md bg-pine text-white">
-              <Building2 size={20} />
-            </span>
+            <Image src="/logo.svg" alt="" width={40} height={40} className="rounded-md" priority />
             <span>
               <span className="block leading-tight">Property Ledger</span>
               <span className="block text-xs font-medium text-slate-500">Pro</span>

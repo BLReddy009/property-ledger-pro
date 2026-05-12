@@ -1,23 +1,41 @@
 "use client";
 
 import { Moon, Sun } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useSyncExternalStore } from "react";
+
+const themeChangeEvent = "plp-theme-change";
+
+function getPreferredDark() {
+  if (typeof window === "undefined") return false;
+  const stored = localStorage.getItem("theme");
+  return stored ? stored === "dark" : window.matchMedia("(prefers-color-scheme: dark)").matches;
+}
+
+function subscribeToTheme(callback: () => void) {
+  const media = window.matchMedia("(prefers-color-scheme: dark)");
+  window.addEventListener("storage", callback);
+  window.addEventListener(themeChangeEvent, callback);
+  media.addEventListener("change", callback);
+
+  return () => {
+    window.removeEventListener("storage", callback);
+    window.removeEventListener(themeChangeEvent, callback);
+    media.removeEventListener("change", callback);
+  };
+}
 
 export function ThemeToggle() {
-  const [dark, setDark] = useState(false);
+  const dark = useSyncExternalStore(subscribeToTheme, getPreferredDark, () => false);
 
   useEffect(() => {
-    const stored = localStorage.getItem("theme");
-    const nextDark = stored ? stored === "dark" : window.matchMedia("(prefers-color-scheme: dark)").matches;
-    setDark(nextDark);
-    document.documentElement.classList.toggle("dark", nextDark);
-  }, []);
+    document.documentElement.classList.toggle("dark", dark);
+  }, [dark]);
 
   function toggle() {
     const next = !dark;
-    setDark(next);
     localStorage.setItem("theme", next ? "dark" : "light");
     document.documentElement.classList.toggle("dark", next);
+    window.dispatchEvent(new Event(themeChangeEvent));
   }
 
   return (

@@ -6,7 +6,10 @@ const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
   title: "Property Ledger Pro",
-  description: "Rent, building expense, asset, warranty, and financial reporting platform."
+  description: "Rent, building expense, asset, warranty, and financial reporting platform.",
+  icons: {
+    icon: "/logo.svg"
+  }
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {

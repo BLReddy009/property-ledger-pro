@@ -1,0 +1,7 @@
+ALTER TABLE "Flat"
+ADD COLUMN "agreementMonths" INTEGER NOT NULL DEFAULT 11,
+ADD COLUMN "rentIncreasePct" DECIMAL(5, 2) NOT NULL DEFAULT 5,
+ADD COLUMN "lastRentRevisionAt" TIMESTAMP(3),
+ADD COLUMN "vacatedAt" TIMESTAMP(3),
+ADD COLUMN "depositDeductions" JSONB,
+ADD COLUMN "depositRefundAmount" DECIMAL(12, 2);

@@ -50,9 +50,10 @@ export function UserManagementClient({
 
   async function createUser(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    const formElement = event.currentTarget;
     setSaving(true);
     setError("");
-    const form = new FormData(event.currentTarget);
+    const form = new FormData(formElement);
     const response = await fetch("/api/users", {
       method: "POST",
       headers: { "content-type": "application/json" },
@@ -73,7 +74,7 @@ export function UserManagementClient({
     }
 
     setUsers((items) => [result, ...items]);
-    event.currentTarget.reset();
+    formElement.reset();
     setRole("TENANT");
   }
 
